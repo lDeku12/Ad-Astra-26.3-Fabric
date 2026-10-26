@@ -1,3 +1,4 @@
+
 name: Ad Astra Fabric Build
 
 on:
@@ -57,7 +58,36 @@ jobs:
               s = s.replace(entry + "\n", "")
 
           p.write_text(s)
-          print("Se aplicó la corrección de inclusiones duplicadas.")
+          print("Inclusiones duplicadas corregidas.")
+          PY
+
+      - name: Adaptar Cloche a un único objetivo Fabric
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path("work/Ad-Astra/build.gradle.kts")
+          s = p.read_text()
+
+          target = '    fabric {\n        val fabricLoaderVersion: String by project'
+          if target not in s:
+              raise SystemExit("No se encontró el bloque fabric esperado.")
+
+          s = s.replace(
+              target,
+              '    singleTarget {\n    fabric {\n        val fabricLoaderVersion: String by project',
+              1
+          )
+
+          marker = '\n    targets.all {'
+          if marker not in s:
+              raise SystemExit("No se encontró el bloque targets.all.")
+
+          s = s.replace(marker, '\n    }\n\n    targets.all {', 1)
+          p.write_text(s)
+          print("Configuración singleTarget aplicada.")
           PY
 
       - name: Compilar Ad Astra
