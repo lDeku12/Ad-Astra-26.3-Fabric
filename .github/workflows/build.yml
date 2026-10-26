@@ -1,4 +1,4 @@
-
+```yaml
 name: Ad Astra Fabric Build
 
 on:
@@ -25,43 +25,16 @@ jobs:
           distribution: temurin
           java-version: '25'
 
-      - name: Extraer el port preparado
+      - name: Extraer las fuentes
         shell: bash
         run: |
           set -euxo pipefail
           mkdir -p work
           unzip -q Ad-Astra-26.3-Fabric-port-source.zip -d work
           test -f work/Ad-Astra/gradlew
-          test -f work/Common-Storage-Lib/settings.gradle.kts
-          test -f work/Athena/settings.gradle.kts
+          test -f work/Ad-Astra/build.gradle.kts
 
-      - name: Corregir inclusiones duplicadas
-        shell: bash
-        run: |
-          set -euxo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-
-          p = Path("work/Common-Storage-Lib/settings.gradle.kts")
-          s = p.read_text()
-
-          duplicates = [
-              'includePlatformModule("data", "common")',
-              'includePlatformModule("data", "fabric")',
-              'includePlatformModule("lookup", "common")',
-              'includePlatformModule("lookup", "fabric")',
-              'includePlatformModule("resources", "common")',
-              'includePlatformModule("resources", "fabric")',
-          ]
-
-          for entry in duplicates:
-              s = s.replace(entry + "\n", "")
-
-          p.write_text(s)
-          print("Inclusiones duplicadas corregidas.")
-          PY
-
-      - name: Adaptar Cloche a un único objetivo Fabric
+      - name: Configurar Cloche para Fabric
         shell: bash
         run: |
           set -euxo pipefail
@@ -71,23 +44,30 @@ jobs:
           p = Path("work/Ad-Astra/build.gradle.kts")
           s = p.read_text()
 
-          target = '    fabric {\n        val fabricLoaderVersion: String by project'
-          if target not in s:
-              raise SystemExit("No se encontró el bloque fabric esperado.")
+          if "singleTarget {" in s:
+              print("Ya existe singleTarget; no se modifica.")
+              raise SystemExit(0)
 
-          s = s.replace(
-              target,
-              '    singleTarget {\n    fabric {\n        val fabricLoaderVersion: String by project',
-              1
-          )
+          common = "    common {"
+          fabric = "    fabric {"
+          targets = "    targets.all {"
 
-          marker = '\n    targets.all {'
-          if marker not in s:
-              raise SystemExit("No se encontró el bloque targets.all.")
+          if s.count(common) != 1:
+              raise SystemExit("No se encontró exactamente un bloque common.")
+          if s.count(fabric) != 1:
+              raise SystemExit("No se encontró exactamente un bloque fabric.")
+          if s.count(targets) != 1:
+              raise SystemExit("No se encontró exactamente un bloque targets.all.")
 
-          s = s.replace(marker, '\n    }\n\n    targets.all {', 1)
+          start = s.index(common)
+          end = s.index(targets)
+
+          if s.index(fabric) < start or s.index(fabric) > end:
+              raise SystemExit("El bloque fabric no está junto al bloque common.")
+
+          s = s[:start] + "    singleTarget {\n" + s[start:end] + "    }\n\n" + s[end:]
           p.write_text(s)
-          print("Configuración singleTarget aplicada.")
+          print("Bloques common y fabric agrupados en singleTarget.")
           PY
 
       - name: Compilar Ad Astra
@@ -98,7 +78,7 @@ jobs:
           chmod +x ./gradlew
           ./gradlew --no-daemon build --stacktrace
 
-      - name: Publicar JAR e informes
+      - name: Guardar JAR e informes
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -109,3 +89,4 @@ jobs:
             work/Ad-Astra/build/test-results/**
           if-no-files-found: warn
           retention-days: 14
+```
