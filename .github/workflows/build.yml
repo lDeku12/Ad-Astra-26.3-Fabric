@@ -1,3 +1,4 @@
+
 name: Ad Astra Fabric Build
 
 on:
@@ -23,42 +24,62 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
+          cache: gradle
 
-      - name: Extraer y localizar el proyecto
+      - name: Extraer y localizar Ad Astra
         shell: bash
         run: |
-          set -euxo pipefail
+          set -euo pipefail
 
           mkdir -p work
           unzip -q Ad-Astra-26.3-Fabric-port-source.zip -d work
 
-          echo "Contenido extraído:"
-          find work -maxdepth 4 -type f | head -200
+          echo "Buscando el proyecto de Ad Astra..."
 
-          GRADLEW="$(find work -type f -name gradlew -print -quit)"
-          if [ -z "$GRADLEW" ]; then
-            echo "ERROR: No se encontró gradlew dentro del ZIP."
+          PROJECT_DIR=""
+
+          while IFS= read -r BUILD_FILE; do
+            DIR="$(dirname "$BUILD_FILE")"
+
+            if [ -f "$DIR/gradlew" ] &&
+               [ -f "$DIR/settings.gradle" ] &&
+               [ -d "$DIR/src" ] &&
+               [ ! -d "$DIR/Athena" ]; then
+              PROJECT_DIR="$DIR"
+              break
+            fi
+          done < <(find work -type f -name build.gradle -not -path '*/Athena/*' -print)
+
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "ERROR: No se encontró la carpeta raíz de Ad Astra."
+            echo "Proyectos Gradle encontrados:"
+            find work -type f \( -name build.gradle -o -name settings.gradle -o -name gradlew \) -print
             exit 1
           fi
 
-          PROJECT_DIR="$(dirname "$GRADLEW")"
-
-          if [ ! -f "$PROJECT_DIR/build.gradle.kts" ] && [ ! -f "$PROJECT_DIR/build.gradle" ]; then
-            echo "ERROR: Se encontró gradlew, pero no el archivo build.gradle o build.gradle.kts en esa carpeta."
-            echo "Carpeta encontrada: $PROJECT_DIR"
-            find work -maxdepth 5 -type f \( -name 'build.gradle' -o -name 'build.gradle.kts' -o -name 'settings.gradle' -o -name 'settings.gradle.kts' \)
-            exit 1
-          fi
-
+          echo "Proyecto seleccionado: $PROJECT_DIR"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
       - name: Compilar Ad Astra
         shell: bash
         run: |
-          set -euxo pipefail
+          set -euo pipefail
           cd "$PROJECT_DIR"
+
           chmod +x ./gradlew
+
+          echo "Directorio de compilación:"
+          pwd
+
+          echo "Ejecutando Gradle..."
           ./gradlew --no-daemon build --stacktrace
+
+      - name: Mostrar JAR generados
+        if: always()
+        shell: bash
+        run: |
+          echo "Archivos JAR encontrados:"
+          find work -type f -path '*/build/libs/*.jar' -print || true
 
       - name: Guardar JAR e informes
         if: always()
