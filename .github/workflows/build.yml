@@ -1,4 +1,3 @@
-```yaml
 name: Ad Astra Fabric Build
 
 on:
@@ -14,7 +13,6 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Descargar repositorio
         uses: actions/checkout@v4
@@ -33,42 +31,6 @@ jobs:
           unzip -q Ad-Astra-26.3-Fabric-port-source.zip -d work
           test -f work/Ad-Astra/gradlew
           test -f work/Ad-Astra/build.gradle.kts
-
-      - name: Configurar Cloche para Fabric
-        shell: bash
-        run: |
-          set -euxo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-
-          p = Path("work/Ad-Astra/build.gradle.kts")
-          s = p.read_text()
-
-          if "singleTarget {" in s:
-              print("Ya existe singleTarget; no se modifica.")
-              raise SystemExit(0)
-
-          common = "    common {"
-          fabric = "    fabric {"
-          targets = "    targets.all {"
-
-          if s.count(common) != 1:
-              raise SystemExit("No se encontró exactamente un bloque common.")
-          if s.count(fabric) != 1:
-              raise SystemExit("No se encontró exactamente un bloque fabric.")
-          if s.count(targets) != 1:
-              raise SystemExit("No se encontró exactamente un bloque targets.all.")
-
-          start = s.index(common)
-          end = s.index(targets)
-
-          if s.index(fabric) < start or s.index(fabric) > end:
-              raise SystemExit("El bloque fabric no está junto al bloque common.")
-
-          s = s[:start] + "    singleTarget {\n" + s[start:end] + "    }\n\n" + s[end:]
-          p.write_text(s)
-          print("Bloques common y fabric agrupados en singleTarget.")
-          PY
 
       - name: Compilar Ad Astra
         working-directory: work/Ad-Astra
@@ -89,4 +51,3 @@ jobs:
             work/Ad-Astra/build/test-results/**
           if-no-files-found: warn
           retention-days: 14
-```
