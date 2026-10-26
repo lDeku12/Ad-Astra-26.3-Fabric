@@ -13,6 +13,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Descargar repositorio
         uses: actions/checkout@v4
@@ -24,6 +25,7 @@ jobs:
           java-version: '25'
 
       - name: Extraer el port preparado
+        shell: bash
         run: |
           set -euxo pipefail
           mkdir -p work
@@ -32,14 +34,41 @@ jobs:
           test -f work/Common-Storage-Lib/settings.gradle.kts
           test -f work/Athena/settings.gradle.kts
 
+      - name: Corregir inclusiones duplicadas
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path("work/Common-Storage-Lib/settings.gradle.kts")
+          s = p.read_text()
+
+          duplicates = [
+              'includePlatformModule("data", "common")',
+              'includePlatformModule("data", "fabric")',
+              'includePlatformModule("lookup", "common")',
+              'includePlatformModule("lookup", "fabric")',
+              'includePlatformModule("resources", "common")',
+              'includePlatformModule("resources", "fabric")',
+          ]
+
+          for entry in duplicates:
+              s = s.replace(entry + "\n", "")
+
+          p.write_text(s)
+          print("Se aplicó la corrección de inclusiones duplicadas.")
+          PY
+
       - name: Compilar Ad Astra
         working-directory: work/Ad-Astra
+        shell: bash
         run: |
           set -euxo pipefail
           chmod +x ./gradlew
           ./gradlew --no-daemon build --stacktrace
 
-      - name: Subir JAR e informes de compilación
+      - name: Publicar JAR e informes
         if: always()
         uses: actions/upload-artifact@v4
         with:
