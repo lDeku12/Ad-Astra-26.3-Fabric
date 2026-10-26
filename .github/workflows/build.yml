@@ -1,11 +1,11 @@
-
 name: Ad Astra Fabric Build
 
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
+    paths:
+      - 'Ad-Astra-26.3-Fabric-port-source.zip'
+      - '.github/workflows/build.yml'
 
 permissions:
   contents: read
@@ -13,7 +13,6 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Descargar repositorio
         uses: actions/checkout@v4
@@ -24,29 +23,30 @@ jobs:
           distribution: temurin
           java-version: '25'
 
-      - name: Comprobar archivos del proyecto
+      - name: Extraer el port preparado
         run: |
-          ls -lh
-          test -f Ad-Astra-1.21.1.zip
-          test -f Athena-26.x.zip
-          test -f Common-Storage-Lib-1.21.x.zip
-
-      - name: Extraer archivos
-        run: |
+          set -euxo pipefail
           mkdir -p work
-          unzip -q Ad-Astra-1.21.1.zip -d work/adastra
-          unzip -q Athena-26.x.zip -d work/athena
-          unzip -q Common-Storage-Lib-1.21.x.zip -d work/storage
+          unzip -q Ad-Astra-26.3-Fabric-port-source.zip -d work
+          test -f work/Ad-Astra/gradlew
+          test -f work/Common-Storage-Lib/settings.gradle.kts
+          test -f work/Athena/settings.gradle.kts
 
-      - name: Buscar Gradle
+      - name: Compilar Ad Astra
+        working-directory: work/Ad-Astra
         run: |
-          find work -name gradlew -type f
+          set -euxo pipefail
+          chmod +x ./gradlew
+          ./gradlew --no-daemon build --stacktrace
 
-      - name: Guardar archivos de diagnóstico
+      - name: Subir JAR e informes de compilación
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ad-astra-diagnostic
-          path: work/
+          name: ad-astra-fabric-26.3-build
+          path: |
+            work/Ad-Astra/build/libs/*.jar
+            work/Ad-Astra/build/reports/**
+            work/Ad-Astra/build/test-results/**
           if-no-files-found: warn
-          retention-days: 7
+          retention-days: 14
