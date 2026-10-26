@@ -20,11 +20,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Instalar Java 25
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '25'
-          cache: gradle
 
       - name: Extraer y localizar Ad Astra
         shell: bash
@@ -34,7 +33,14 @@ jobs:
           mkdir -p work
           unzip -q Ad-Astra-26.3-Fabric-port-source.zip -d work
 
-          echo "Buscando el proyecto de Ad Astra..."
+          echo "Estructura del ZIP:"
+          find work -maxdepth 4 -type f \( \
+            -name 'build.gradle' -o \
+            -name 'build.gradle.kts' -o \
+            -name 'settings.gradle' -o \
+            -name 'settings.gradle.kts' -o \
+            -name 'gradlew' \
+          \) -print
 
           PROJECT_DIR=""
 
@@ -42,18 +48,28 @@ jobs:
             DIR="$(dirname "$BUILD_FILE")"
 
             if [ -f "$DIR/gradlew" ] &&
-               [ -f "$DIR/settings.gradle" ] &&
+               { [ -f "$DIR/settings.gradle" ] || [ -f "$DIR/settings.gradle.kts" ]; } &&
                [ -d "$DIR/src" ] &&
                [ ! -d "$DIR/Athena" ]; then
               PROJECT_DIR="$DIR"
               break
             fi
-          done < <(find work -type f -name build.gradle -not -path '*/Athena/*' -print)
+          done < <(
+            find work -type f \
+              \( -name 'build.gradle' -o -name 'build.gradle.kts' \) \
+              -not -path '*/Athena/*' -print
+          )
 
           if [ -z "$PROJECT_DIR" ]; then
-            echo "ERROR: No se encontró la carpeta raíz de Ad Astra."
-            echo "Proyectos Gradle encontrados:"
-            find work -type f \( -name build.gradle -o -name settings.gradle -o -name gradlew \) -print
+            echo "ERROR: No se pudo identificar la raíz del proyecto Ad Astra."
+            echo "Archivos Gradle encontrados:"
+            find work -type f \( \
+              -name 'build.gradle' -o \
+              -name 'build.gradle.kts' -o \
+              -name 'settings.gradle' -o \
+              -name 'settings.gradle.kts' -o \
+              -name 'gradlew' \
+            \) -print
             exit 1
           fi
 
@@ -64,21 +80,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cd "$PROJECT_DIR"
 
+          cd "$PROJECT_DIR"
           chmod +x ./gradlew
 
-          echo "Directorio de compilación:"
-          pwd
-
-          echo "Ejecutando Gradle..."
+          echo "Compilando desde: $(pwd)"
           ./gradlew --no-daemon build --stacktrace
 
       - name: Mostrar JAR generados
         if: always()
         shell: bash
         run: |
-          echo "Archivos JAR encontrados:"
+          echo "JAR encontrados:"
           find work -type f -path '*/build/libs/*.jar' -print || true
 
       - name: Guardar JAR e informes
