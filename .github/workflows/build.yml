@@ -1,0 +1,52 @@
+
+name: Ad Astra Fabric Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Comprobar archivos del proyecto
+        run: |
+          ls -lh
+          test -f Ad-Astra-1.21.1.zip
+          test -f Athena-26.x.zip
+          test -f Common-Storage-Lib-1.21.x.zip
+
+      - name: Extraer archivos
+        run: |
+          mkdir -p work
+          unzip -q Ad-Astra-1.21.1.zip -d work/adastra
+          unzip -q Athena-26.x.zip -d work/athena
+          unzip -q Common-Storage-Lib-1.21.x.zip -d work/storage
+
+      - name: Buscar Gradle
+        run: |
+          find work -name gradlew -type f
+
+      - name: Guardar archivos de diagnóstico
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ad-astra-diagnostic
+          path: work/
+          if-no-files-found: warn
+          retention-days: 7
