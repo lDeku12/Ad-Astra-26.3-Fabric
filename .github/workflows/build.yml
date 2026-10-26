@@ -71,4 +71,3 @@ jobs:
             work/**/build/test-results/**
           if-no-files-found: warn
           retention-days: 14
-```
