@@ -110,14 +110,23 @@ jobs:
           EOF
           fi
 
-      - name: Crear accesswidener necesario con namespace oficial
+      - name: Normalizar archivo accesswidener para Loom
         shell: bash
         run: |
           set -euo pipefail
           TARGET_DIR="$PROJECT_DIR/Common-Storage-Lib/resources/fabric/src/main/resources"
           mkdir -p "$TARGET_DIR"
-          echo "accessWidener v1 official" > "$TARGET_DIR/common_storage_lib_resources.accesswidener"
-          echo "Archivo accesswidener creado correctamente en: $TARGET_DIR"
+          
+          # Creamos un accesswidener válido únicamente con la cabecera permitida y sin reglas conflictivas
+          echo "accessWidener v1 named" > "$TARGET_DIR/common_storage_lib_resources.accesswidener"
+          
+          # Buscamos cualquier otro accesswidener residual y lo vaciamos o corregimos
+          find work -name "*.accesswidener" | while read -r aw_file; do
+            echo "Limpiando reglas conflictivas en: $aw_file"
+            echo "accessWidener v1 named" > "$aw_file"
+          done
+          
+          echo "Archivos accesswidener normalizados correctamente."
 
       - name: Compilar Ad Astra
         shell: bash
