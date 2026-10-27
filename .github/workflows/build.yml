@@ -83,11 +83,21 @@ jobs:
           find work -path "*/Common-Storage-Lib/*" -name "*.gradle.kts" | while read -r file; do
             if grep -q "modApi" "$file"; then
               echo "Modificando archivo: $file"
-              # Reemplaza únicamente la llamada a modApi manteniendo el resto intacto
               sed -i 's/include(modApi(group = "teamreborn", name = "energy", version = "4.1.0"))/include("teamreborn:energy:4.1.0")/g' "$file"
             fi
           done
           echo "Sustitución completada con éxito."
+
+      - name: Desactivar access-widener conflictivo en Common-Storage-Lib
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Buscando archivos .accesswidener en Common-Storage-Lib..."
+          find work -path "*/Common-Storage-Lib/*" -name "*.accesswidener" | while read -r widener; do
+            echo "Eliminando: $widener"
+            rm -f "$widener"
+          done
+          echo "Access-wideners conflictivos eliminados."
 
       - name: Compilar Ad Astra
         shell: bash
