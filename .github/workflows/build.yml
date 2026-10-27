@@ -88,16 +88,14 @@ jobs:
           done
           echo "Sustitución completada con éxito."
 
-      - name: Desactivar access-widener conflictivo en Common-Storage-Lib
+      - name: Crear accesswidener vacío para evitar errores
         shell: bash
         run: |
           set -euo pipefail
-          echo "Buscando archivos .accesswidener en Common-Storage-Lib..."
-          find work -path "*/Common-Storage-Lib/*" -name "*.accesswidener" | while read -r widener; do
-            echo "Eliminando: $widener"
-            rm -f "$widener"
-          done
-          echo "Access-wideners conflictivos eliminados."
+          TARGET_DIR="work/Ad-Astra-26.3-Fabric-port-source/Common-Storage-Lib/resources/fabric/src/main/resources"
+          mkdir -p "$TARGET_DIR"
+          echo "accessWidener	v1	named" > "$TARGET_DIR/common_storage_lib_resources.accesswidener"
+          echo "Archivo accesswidener creado correctamente."
 
       - name: Compilar Ad Astra
         shell: bash
