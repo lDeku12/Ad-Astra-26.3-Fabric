@@ -88,14 +88,14 @@ jobs:
           done
           echo "Sustitución completada con éxito."
 
-      - name: Crear accesswidener vacío para evitar errores
+      - name: Crear accesswidener en la ruta exacta requerida
         shell: bash
         run: |
           set -euo pipefail
-          TARGET_DIR="work/Ad-Astra-26.3-Fabric-port-source/Common-Storage-Lib/resources/fabric/src/main/resources"
+          TARGET_DIR="$PROJECT_DIR/Common-Storage-Lib/resources/fabric/src/main/resources"
           mkdir -p "$TARGET_DIR"
-          echo "accessWidener	v1	named" > "$TARGET_DIR/common_storage_lib_resources.accesswidener"
-          echo "Archivo accesswidener creado correctamente."
+          echo "accessWidener v1 named" > "$TARGET_DIR/common_storage_lib_resources.accesswidener"
+          echo "Archivo accesswidener creado en: $TARGET_DIR"
 
       - name: Compilar Ad Astra
         shell: bash
