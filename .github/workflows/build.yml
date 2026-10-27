@@ -75,25 +75,19 @@ jobs:
           echo "Proyecto seleccionado: $PROJECT_DIR"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
-      - name: Corregir automáticamente Common-Storage-Lib build.gradle.kts
+      - name: Corregir línea modApi de forma segura en Common-Storage-Lib
         shell: bash
         run: |
           set -euo pipefail
-          echo "Buscando archivos build.gradle.kts conflictivos en Common-Storage-Lib..."
-          find work -path "*/Common-Storage-Lib/*" -name "build.gradle.kts" | while read -r file; do
+          echo "Buscando y corrigiendo modApi en Common-Storage-Lib..."
+          find work -path "*/Common-Storage-Lib/*" -name "*.gradle.kts" | while read -r file; do
             if grep -q "modApi" "$file"; then
-              echo "Corrigiendo archivo: $file"
-              cat << 'EOF' > "$file"
-          // Corregido automáticamente por GitHub Actions
-          dependencies {
-              implementation("teamreborn:energy:4.1.0") {
-                  exclude(group = "net.fabricmc", module = "fabric-api")
-              }
-          }
-          EOF
+              echo "Modificando archivo: $file"
+              # Reemplaza únicamente la llamada a modApi manteniendo el resto intacto
+              sed -i 's/include(modApi(group = "teamreborn", name = "energy", version = "4.1.0"))/include("teamreborn:energy:4.1.0")/g' "$file"
             fi
           done
-          echo "Corrección masiva aplicada."
+          echo "Sustitución completada con éxito."
 
       - name: Compilar Ad Astra
         shell: bash
