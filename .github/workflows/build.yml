@@ -110,13 +110,14 @@ jobs:
           EOF
           fi
 
-      - name: Eliminar por completo los accesswideners conflictivos
+      - name: Crear accesswidener necesario con namespace oficial
         shell: bash
         run: |
           set -euo pipefail
-          echo "Borrando cualquier archivo .accesswidener del proyecto..."
-          find work -name "*.accesswidener" -delete
-          echo "Eliminación completada."
+          TARGET_DIR="$PROJECT_DIR/Common-Storage-Lib/resources/fabric/src/main/resources"
+          mkdir -p "$TARGET_DIR"
+          echo "accessWidener v1 official" > "$TARGET_DIR/common_storage_lib_resources.accesswidener"
+          echo "Archivo accesswidener creado correctamente en: $TARGET_DIR"
 
       - name: Compilar Ad Astra
         shell: bash
