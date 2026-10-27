@@ -88,21 +88,36 @@ jobs:
           done
           echo "Sustitución completada con éxito."
 
-      - name: Eliminar accesswideners conflictivos por completo
+      - name: Inyectar repositorios de Maven faltantes
         shell: bash
         run: |
           set -euo pipefail
-          echo "Buscando y eliminando archivos .accesswidener..."
-          find work -path "*/Common-Storage-Lib/*" -name "*.accesswidener" -delete
-          
-          echo "Buscando referencias a accessWidener en archivos gradle para desactivarlas..."
-          find work -path "*/Common-Storage-Lib/*" -name "*.gradle.kts" | while read -r file; do
-            if grep -q "accessWidener" "$file"; then
-              echo "Comentando accessWidener en: $file"
-              sed -i 's/accessWidener/\/\//g' "$file"
-            fi
-          done
-          echo "Limpieza de access-wideners finalizada."
+          SETTINGS_FILE="$PROJECT_DIR/settings.gradle.kts"
+          if [ -f "$SETTINGS_FILE" ]; then
+            echo "Añadiendo repositorios globales en $SETTINGS_FILE..."
+            cat << 'EOF' >> "$SETTINGS_FILE"
+
+          dependencyResolutionManagement {
+              repositories {
+                  mavenCentral()
+                  maven("https://maven.fabricmc.net/")
+                  maven("https://maven.teamresourceful.com/repository/maven-public/")
+                  maven("https://maven.shedaniel.me/")
+                  maven("https://maven.firstdarkdev.xyz/snapshots/")
+                  maven("https://maven.neoforged.net/releases")
+              }
+          }
+          EOF
+          fi
+
+      - name: Crear accesswidener en la ruta exacta requerida
+        shell: bash
+        run: |
+          set -euo pipefail
+          TARGET_DIR="$PROJECT_DIR/Common-Storage-Lib/resources/fabric/src/main/resources"
+          mkdir -p "$TARGET_DIR"
+          echo "accessWidener v1 named" > "$TARGET_DIR/common_storage_lib_resources.accesswidener"
+          echo "Archivo accesswidener creado en: $TARGET_DIR"
 
       - name: Compilar Ad Astra
         shell: bash
