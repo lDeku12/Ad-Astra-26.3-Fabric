@@ -88,14 +88,14 @@ jobs:
           done
           echo "Sustitución completada con éxito."
 
-      - name: Limpiar versiones problemáticas en archivos build.gradle.kts y properties
+      - name: Corregir versiones de Fabric API en Common-Storage-Lib y el proyecto principal
         shell: bash
         run: |
           set -euo pipefail
-          echo "Eliminando referencias a la versión rota de fabric-api..."
+          echo "Reemplazando versiones problemáticas de fabric-api..."
           find work -type f \( -name "*.gradle.kts" -o -name "*.gradle" -o -name "gradle.properties" \) | while read -r file; do
+            sed -i 's/0.164.0+1.21/0.102.0+1.21/g' "$file" || true
             sed -i 's/0.164.0+26.3+26.3/0.102.0+1.21/g' "$file" || true
-            sed -i 's/26.3/1.21/g' "$file" || true
           done
 
       - name: Inyectar repositorios completos incluyendo Modrinth y Maven Central
