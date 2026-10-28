@@ -88,13 +88,25 @@ jobs:
           done
           echo "Sustitución completada con éxito."
 
-      - name: Inyectar repositorios de Maven faltantes
+      - name: Ajustar versiones y repositorios en gradle.properties
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Buscando archivos gradle.properties para asegurar versiones compatibles..."
+          find work -name "gradle.properties" | while read -r prop_file; do
+            if grep -q "fabric_api_version" "$prop_file"; then
+              echo "Actualizando fabric_api_version en $prop_file"
+              sed -i 's/fabric_api_version=.*/fabric_api_version=0.114.0+1.21/g' "$prop_file" || true
+            fi
+          done
+
+      - name: Inyectar repositorios de Maven completos
         shell: bash
         run: |
           set -euo pipefail
           SETTINGS_FILE="$PROJECT_DIR/settings.gradle.kts"
           if [ -f "$SETTINGS_FILE" ]; then
-            echo "Añadiendo repositorios globales en $SETTINGS_FILE..."
+            echo "Añadiendo repositorios completos en $SETTINGS_FILE..."
             cat << 'EOF' >> "$SETTINGS_FILE"
 
           dependencyResolutionManagement {
@@ -103,6 +115,8 @@ jobs:
                   maven("https://maven.fabricmc.net/")
                   maven("https://maven.teamresourceful.com/repository/maven-public/")
                   maven("https://maven.shedaniel.me/")
+                  maven("https://maven.blamejared.com/")
+                  maven("https://libraries.minecraft.net/")
                   maven("https://maven.firstdarkdev.xyz/snapshots/")
                   maven("https://maven.neoforged.net/releases")
               }
@@ -117,10 +131,8 @@ jobs:
           TARGET_DIR="$PROJECT_DIR/Common-Storage-Lib/resources/fabric/src/main/resources"
           mkdir -p "$TARGET_DIR"
           
-          # Creamos el archivo exigido usando 'official' en lugar de 'named'
           echo "accessWidener v1 official" > "$TARGET_DIR/common_storage_lib_resources.accesswidener"
           
-          # Actualizamos cualquier otro archivo accesswidener para usar 'official'
           find work -name "*.accesswidener" | while read -r aw_file; do
             echo "Actualizando namespace a official en: $aw_file"
             echo "accessWidener v1 official" > "$aw_file"
