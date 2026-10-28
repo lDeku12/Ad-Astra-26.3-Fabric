@@ -88,30 +88,29 @@ jobs:
           done
           echo "Sustitución completada con éxito."
 
-      - name: Ajustar versiones y repositorios en gradle.properties
+      - name: Forzar versión compatible de Fabric API en gradle.properties
         shell: bash
         run: |
           set -euo pipefail
-          echo "Buscando archivos gradle.properties para asegurar versiones compatibles..."
+          echo "Borrando restricciones estrictas de versiones en gradle.properties..."
           find work -name "gradle.properties" | while read -r prop_file; do
-            if grep -q "fabric_api_version" "$prop_file"; then
-              echo "Actualizando fabric_api_version en $prop_file"
-              sed -i 's/fabric_api_version=.*/fabric_api_version=0.114.0+1.21/g' "$prop_file" || true
-            fi
+            sed -i 's/^fabric_api_version=.*/fabric_api_version=0.102.0+1.21/g' "$prop_file" || true
+            sed -i 's/^resourceful_config_version=.*/resourceful_config_version=2.1.0/g' "$prop_file" || true
           done
 
-      - name: Inyectar repositorios de Maven completos
+      - name: Inyectar repositorios completos incluyendo Modrinth y Maven Central
         shell: bash
         run: |
           set -euo pipefail
           SETTINGS_FILE="$PROJECT_DIR/settings.gradle.kts"
           if [ -f "$SETTINGS_FILE" ]; then
-            echo "Añadiendo repositorios completos en $SETTINGS_FILE..."
+            echo "Añadiendo repositorios globales en $SETTINGS_FILE..."
             cat << 'EOF' >> "$SETTINGS_FILE"
 
           dependencyResolutionManagement {
               repositories {
                   mavenCentral()
+                  maven("https://api.modrinth.com/maven")
                   maven("https://maven.fabricmc.net/")
                   maven("https://maven.teamresourceful.com/repository/maven-public/")
                   maven("https://maven.shedaniel.me/")
