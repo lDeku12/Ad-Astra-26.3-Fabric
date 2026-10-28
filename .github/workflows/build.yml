@@ -88,14 +88,14 @@ jobs:
           done
           echo "Sustitución completada con éxito."
 
-      - name: Forzar versión compatible de Fabric API en gradle.properties
+      - name: Limpiar versiones problemáticas en archivos build.gradle.kts y properties
         shell: bash
         run: |
           set -euo pipefail
-          echo "Borrando restricciones estrictas de versiones en gradle.properties..."
-          find work -name "gradle.properties" | while read -r prop_file; do
-            sed -i 's/^fabric_api_version=.*/fabric_api_version=0.102.0+1.21/g' "$prop_file" || true
-            sed -i 's/^resourceful_config_version=.*/resourceful_config_version=2.1.0/g' "$prop_file" || true
+          echo "Eliminando referencias a la versión rota de fabric-api..."
+          find work -type f \( -name "*.gradle.kts" -o -name "*.gradle" -o -name "gradle.properties" \) | while read -r file; do
+            sed -i 's/0.164.0+26.3+26.3/0.102.0+1.21/g' "$file" || true
+            sed -i 's/26.3/1.21/g' "$file" || true
           done
 
       - name: Inyectar repositorios completos incluyendo Modrinth y Maven Central
