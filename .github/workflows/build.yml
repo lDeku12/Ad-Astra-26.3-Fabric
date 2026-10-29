@@ -28,11 +28,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           mkdir -p work
           unzip -q Ad-Astra-26.3-Fabric-port-source.zip -d work
-
-          echo "Estructura del ZIP extraída con éxito."
           
           PROJECT_DIR=""
           for d in $(find work -type d -name "Ad-Astra" -o -name "*Ad-Astra*"); do
@@ -60,11 +57,10 @@ jobs:
           echo "Proyecto seleccionado: $PROJECT_DIR"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
-      - name: Corregir versiones de Fabric API en todo el proyecto
+      - name: Corregir versiones de Fabric API
         shell: bash
         run: |
           set -euo pipefail
-          echo "Reemplazando versiones problemáticas de fabric-api por 0.100.4+1.21..."
           find work -type f \( -name "*.gradle.kts" -o -name "*.gradle" -o -name "gradle.properties" \) | while read -r file; do
             sed -i 's/0.164.0+1.21/0.100.4+1.21/g' "$file" || true
             sed -i 's/0.164.0+26.3+26.3/0.100.4+1.21/g' "$file" || true
@@ -77,38 +73,24 @@ jobs:
           set -euo pipefail
           BUILD_FILE="$PROJECT_DIR/build.gradle.kts"
           if [ -f "$BUILD_FILE" ]; then
-            echo "Inyectando repositorios en $BUILD_FILE..."
-            cat << 'EOF' >> "$BUILD_FILE"
-
-repositories {
-    mavenCentral()
-    maven("https://maven.fabricmc.net/")
-    maven("https://api.modrinth.com/maven")
-    maven("https://maven.teamresourceful.com/repository/maven-public/")
-    maven("https://maven.shedaniel.me/")
-    maven("https://maven.blamejared.com/")
-    maven("https://libraries.minecraft.net/")
-}
-EOF
+            echo "repositories {" >> "$BUILD_FILE"
+            echo "    mavenCentral()" >> "$BUILD_FILE"
+            echo "    maven(\"https://maven.fabricmc.net/\")" >> "$BUILD_FILE"
+            echo "    maven(\"https://api.modrinth.com/maven\")" >> "$BUILD_FILE"
+            echo "    maven(\"https://maven.teamresourceful.com/repository/maven-public/\")" >> "$BUILD_FILE"
+            echo "    maven(\"https://maven.shedaniel.me/\")" >> "$BUILD_FILE"
+            echo "    maven(\"https://maven.blamejared.com/\")" >> "$BUILD_FILE"
+            echo "    maven(\"https://libraries.minecraft.net/\")" >> "$BUILD_FILE"
+            echo "}" >> "$BUILD_FILE"
           fi
 
       - name: Compilar Ad Astra
         shell: bash
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
           chmod +x ./gradlew
-
-          echo "Compilando desde: $(pwd)"
           ./gradlew --no-daemon build --stacktrace
-
-      - name: Mostrar JAR generados
-        if: always()
-        shell: bash
-        run: |
-          echo "JAR encontrados:"
-          find work -type f -path '*/build/libs/*.jar' -print || true
 
       - name: Guardar JAR e informes
         if: always()
@@ -118,6 +100,5 @@ EOF
           path: |
             work/**/build/libs/*.jar
             work/**/build/reports/**
-            work/**/build/test-results/**
           if-no-files-found: warn
           retention-days: 14
