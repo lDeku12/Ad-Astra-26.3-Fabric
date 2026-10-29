@@ -1,340 +1,123 @@
 name: Ad Astra Fabric Build
 
-
-
 on:
-
   workflow_dispatch:
-
   push:
-
     paths:
-
       - 'Ad-Astra-26.3-Fabric-port-source.zip'
-
       - '.github/workflows/build.yml'
 
-
-
 permissions:
-
   contents: read
 
-
-
 jobs:
-
   build:
-
     runs-on: ubuntu-latest
 
-
-
     steps:
-
       - name: Descargar repositorio
-
         uses: actions/checkout@v4
 
-
-
       - name: Instalar Java 25
-
         uses: actions/setup-java@v5
-
         with:
-
           distribution: temurin
-
           java-version: '25'
 
-
-
       - name: Extraer y localizar Ad Astra
-
         shell: bash
-
         run: |
-
           set -euo pipefail
-
-
 
           mkdir -p work
-
           unzip -q Ad-Astra-26.3-Fabric-port-source.zip -d work
 
-
-
-          echo "Estructura del ZIP:"
-
-          find work -maxdepth 4 -type f \( \
-
-            -name 'build.gradle' -o \
-
-            -name 'build.gradle.kts' -o \
-
-            -name 'settings.gradle' -o \
-
-            -name 'settings.gradle.kts' -o \
-
-            -name 'gradlew' \
-
-          \) -print
-
-
-
+          echo "Estructura del ZIP extraída con éxito."
+          
           PROJECT_DIR=""
-
-
-
-          while IFS= read -r BUILD_FILE; do
-
-            DIR="$(dirname "$BUILD_FILE")"
-
-
-
-            if [ -f "$DIR/gradlew" ] &&
-
-               { [ -f "$DIR/settings.gradle" ] || [ -f "$DIR/settings.gradle.kts" ]; } &&
-
-               [ -d "$DIR/src" ] &&
-
-               [ ! -d "$DIR/Athena" ]; then
-
-              PROJECT_DIR="$DIR"
-
+          for d in $(find work -type d -name "Ad-Astra" -o -name "*Ad-Astra*"); do
+            if [ -f "$d/gradlew" ] && [ -d "$d/src" ]; then
+              PROJECT_DIR="$d"
               break
-
             fi
-
-          done < <(
-
-            find work -type f \
-
-              \( -name 'build.gradle' -o -name 'build.gradle.kts' \) \
-
-              -not -path '*/Athena/*' -print
-
-          )
-
-
+          done
 
           if [ -z "$PROJECT_DIR" ]; then
-
-            echo "ERROR: No se pudo identificar la raíz del proyecto Ad Astra."
-
-            echo "Archivos Gradle encontrados:"
-
-            find work -type f \( \
-
-              -name 'build.gradle' -o \
-
-              -name 'build.gradle.kts' -o \
-
-              -name 'settings.gradle' -o \
-
-              -name 'settings.gradle.kts' -o \
-
-              -name 'gradlew' \
-
-            \) -print
-
-            exit 1
-
+            for f in $(find work -name "gradlew" -type f); do
+              DIR="$(dirname "$f")"
+              if [ -d "$DIR/src" ]; then
+                PROJECT_DIR="$DIR"
+                break
+              fi
+            done
           fi
 
-
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "ERROR: No se pudo identificar la raíz del proyecto Ad Astra."
+            exit 1
+          fi
 
           echo "Proyecto seleccionado: $PROJECT_DIR"
-
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
-
-
-      - name: Corregir línea modApi de forma segura en Common-Storage-Lib
-
+      - name: Corregir versiones de Fabric API en todo el proyecto
         shell: bash
-
         run: |
-
           set -euo pipefail
-
-          echo "Buscando y corrigiendo modApi en Common-Storage-Lib..."
-
-          find work -path "*/Common-Storage-Lib/*" -name "*.gradle.kts" | while read -r file; do
-
-            if grep -q "modApi" "$file"; then
-
-              echo "Modificando archivo: $file"
-
-              sed -i 's/include(modApi(group = "teamreborn", name = "energy", version = "4.1.0"))/include("teamreborn:energy:4.1.0")/g' "$file"
-
-            fi
-
-          done
-
-          echo "Sustitución completada con éxito."
-
-
-
-      - name: Corregir versiones de Fabric API en Common-Storage-Lib y el proyecto principal
-
-        shell: bash
-
-        run: |
-
-          set -euo pipefail
-
-          echo "Reemplazando versiones problemáticas de fabric-api..."
-
+          echo "Reemplazando versiones problemáticas de fabric-api por 0.100.4+1.21..."
           find work -type f \( -name "*.gradle.kts" -o -name "*.gradle" -o -name "gradle.properties" \) | while read -r file; do
-
-            sed -i 's/0.164.0+1.21/0.102.0+1.21/g' "$file" || true
-
-            sed -i 's/0.164.0+26.3+26.3/0.102.0+1.21/g' "$file" || true
-
+            sed -i 's/0.164.0+1.21/0.100.4+1.21/g' "$file" || true
+            sed -i 's/0.164.0+26.3+26.3/0.100.4+1.21/g' "$file" || true
+            sed -i 's/0.102.0+1.21/0.100.4+1.21/g' "$file" || true
           done
 
-
-
-      - name: Inyectar repositorios completos incluyendo Modrinth y Maven Central
-
+      - name: Inyectar repositorios universales
         shell: bash
-
         run: |
-
           set -euo pipefail
+          BUILD_FILE="$PROJECT_DIR/build.gradle.kts"
+          if [ -f "$BUILD_FILE" ]; then
+            echo "Inyectando repositorios en $BUILD_FILE..."
+            cat << 'EOF' >> "$BUILD_FILE"
 
-          SETTINGS_FILE="$PROJECT_DIR/settings.gradle.kts"
-
-          if [ -f "$SETTINGS_FILE" ]; then
-
-            echo "Añadiendo repositorios globales en $SETTINGS_FILE..."
-
-            cat << 'EOF' >> "$SETTINGS_FILE"
-
-
-
-          dependencyResolutionManagement {
-
-              repositories {
-
-                  mavenCentral()
-
-                  maven("https://api.modrinth.com/maven")
-
-                  maven("https://maven.fabricmc.net/")
-
-                  maven("https://maven.teamresourceful.com/repository/maven-public/")
-
-                  maven("https://maven.shedaniel.me/")
-
-                  maven("https://maven.blamejared.com/")
-
-                  maven("https://libraries.minecraft.net/")
-
-                  maven("https://maven.firstdarkdev.xyz/snapshots/")
-
-                  maven("https://maven.neoforged.net/releases")
-
-              }
-
-          }
-
-          EOF
-
+repositories {
+    mavenCentral()
+    maven("https://maven.fabricmc.net/")
+    maven("https://api.modrinth.com/maven")
+    maven("https://maven.teamresourceful.com/repository/maven-public/")
+    maven("https://maven.shedaniel.me/")
+    maven("https://maven.blamejared.com/")
+    maven("https://libraries.minecraft.net/")
+}
+EOF
           fi
 
-
-
-      - name: Configurar accesswidener con namespace official
-
-        shell: bash
-
-        run: |
-
-          set -euo pipefail
-
-          TARGET_DIR="$PROJECT_DIR/Common-Storage-Lib/resources/fabric/src/main/resources"
-
-          mkdir -p "$TARGET_DIR"
-
-          
-
-          echo "accessWidener v1 official" > "$TARGET_DIR/common_storage_lib_resources.accesswidener"
-
-          
-
-          find work -name "*.accesswidener" | while read -r aw_file; do
-
-            echo "Actualizando namespace a official en: $aw_file"
-
-            echo "accessWidener v1 official" > "$aw_file"
-
-          done
-
-          
-
-          echo "Accesswideners configurados con namespace oficial."
-
-
-
       - name: Compilar Ad Astra
-
         shell: bash
-
         run: |
-
           set -euo pipefail
-
-
 
           cd "$PROJECT_DIR"
-
           chmod +x ./gradlew
 
-
-
           echo "Compilando desde: $(pwd)"
-
           ./gradlew --no-daemon build --stacktrace
 
-
-
       - name: Mostrar JAR generados
-
         if: always()
-
         shell: bash
-
         run: |
-
           echo "JAR encontrados:"
-
           find work -type f -path '*/build/libs/*.jar' -print || true
 
-
-
       - name: Guardar JAR e informes
-
         if: always()
-
         uses: actions/upload-artifact@v4
-
         with:
-
           name: ad-astra-fabric-26.3-build
-
           path: |
-
             work/**/build/libs/*.jar
-
             work/**/build/reports/**
-
             work/**/build/test-results/**
-
           if-no-files-found: warn
-
-          retention-days: 14 
-
+          retention-days: 14
