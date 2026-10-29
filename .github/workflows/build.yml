@@ -88,39 +88,36 @@ jobs:
           done
           echo "Sustitución completada con éxito."
 
-      - name: Corregir versiones de Fabric API en Common-Storage-Lib y el proyecto principal
+      - name: Corregir versiones de Fabric API en todo el proyecto
         shell: bash
         run: |
           set -euo pipefail
-          echo "Reemplazando versiones problemáticas de fabric-api..."
+          echo "Reemplazando versiones problemáticas de fabric-api por 0.100.4+1.21..."
           find work -type f \( -name "*.gradle.kts" -o -name "*.gradle" -o -name "gradle.properties" \) | while read -r file; do
-            sed -i 's/0.164.0+1.21/0.102.0+1.21/g' "$file" || true
-            sed -i 's/0.164.0+26.3+26.3/0.102.0+1.21/g' "$file" || true
+            sed -i 's/0.164.0+1.21/0.100.4+1.21/g' "$file" || true
+            sed -i 's/0.164.0+26.3+26.3/0.100.4+1.21/g' "$file" || true
+            sed -i 's/0.102.0+1.21/0.100.4+1.21/g' "$file" || true
           done
 
-      - name: Inyectar repositorios completos incluyendo Modrinth y Maven Central
+      - name: Inyectar repositorios universales
         shell: bash
         run: |
           set -euo pipefail
-          SETTINGS_FILE="$PROJECT_DIR/settings.gradle.kts"
-          if [ -f "$SETTINGS_FILE" ]; then
-            echo "Añadiendo repositorios globales en $SETTINGS_FILE..."
-            cat << 'EOF' >> "$SETTINGS_FILE"
+          BUILD_FILE="$PROJECT_DIR/build.gradle.kts"
+          if [ -f "$BUILD_FILE" ]; then
+            echo "Inyectando repositorios en $BUILD_FILE..."
+            cat << 'EOF' >> "$BUILD_FILE"
 
-          dependencyResolutionManagement {
-              repositories {
-                  mavenCentral()
-                  maven("https://api.modrinth.com/maven")
-                  maven("https://maven.fabricmc.net/")
-                  maven("https://maven.teamresourceful.com/repository/maven-public/")
-                  maven("https://maven.shedaniel.me/")
-                  maven("https://maven.blamejared.com/")
-                  maven("https://libraries.minecraft.net/")
-                  maven("https://maven.firstdarkdev.xyz/snapshots/")
-                  maven("https://maven.neoforged.net/releases")
-              }
-          }
-          EOF
+repositories {
+    mavenCentral()
+    maven("https://maven.fabricmc.net/")
+    maven("https://api.modrinth.com/maven")
+    maven("https://maven.teamresourceful.com/repository/maven-public/")
+    maven("https://maven.shedaniel.me/")
+    maven("https://maven.blamejared.com/")
+    maven("https://libraries.minecraft.net/")
+}
+EOF
           fi
 
       - name: Configurar accesswidener con namespace official
@@ -148,7 +145,7 @@ jobs:
           chmod +x ./gradlew
 
           echo "Compilando desde: $(pwd)"
-          ./gradlew --no-daemon build --stacktrace
+          ./gradlew --no-daemon build --stacktrace --info
 
       - name: Mostrar JAR generados
         if: always()
